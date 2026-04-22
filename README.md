@@ -1,4 +1,4 @@
-# 🌍 Trip Tadka — AI Trip Planner for n8n
+#  Trip Tadka — AI Trip Planner for n8n
 
 > **Your personal AI travel agent** — just fill a form, and get a complete trip itinerary with hotels, activities, budget breakdown, and packing tips — delivered straight to your inbox! ✈️📧
 
@@ -9,21 +9,21 @@
 
 ---
 
-## 📸 Preview
+##  Preview
 
-### 🖥️ Workflow Overview
+###  Workflow Overview
 ![Workflow](assets/Workflow.png)
 
-### 📝 Form Interface
+###  Form Interface
 ![Form](assets/Form.png)
 
-### 📧 Email Output
+###  Email Output
 <p align="center">
   <img src="assets/Mail1.png" width="48%" />
   <img src="assets/Mail2.png" width="48%" />
 </p>
 
-### ✅ Execution Log
+###  Execution Log
 ![Execution](assets/Execution.png)
 
 ---
@@ -41,70 +41,70 @@ All within your budget. All automated. Zero manual work.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-📥 Form Input
+ Form Input
     │
     ▼
-✅ Format Data ──→ Budget Calculator
+ Format Data ──→ Budget Calculator
                         │
          ┌──────────────┼──────────────┐──────────────┐──────────────┐
          ▼              ▼              ▼              ▼              ▼
-    🏨 Hotels     🗺️ Places     🎭 Activities   🌤️ Weather    ⭐ Reviews
+      Hotels        Places       Activities       Weather        Reviews
          │              │              │              │              │
          └──────────────┴──────────────┴──────────────┴──────────────┘
                                        │
                                        ▼
-                              🔄 Merge & Score
+                                 Merge & Score
                                        │
                                        ▼
-                              ❓ Hotels in Budget?
+                                Hotels in Budget?
                               ╱                ╲
                            ✅ Yes            ❌ No
                              │                 │
                              ▼                 ▼
-                      📋 AI Planner      ⚠️ Error Log
+                        AI Planner        Error Log
                              │
                              ▼
-                      📧 Email Agent
+                        Email Agent
                              │
                              ▼
-                      ✉️ Gmail Send
+                        Gmail Send
                              │
                              ▼
-                      📝 Log Completion
+                        Log Completion
 ```
 
 **27 nodes** | **6 stages** | **5 parallel API calls** | **2 AI agents**
 
 ---
 
-## 🧩 Node Breakdown
+##  Node Breakdown
 
 | Stage | Node | Type | Purpose |
 |-------|------|------|---------|
-| 📥 **Input** | Trip Planner Form | Form Trigger | 9-field web form (only 2 required) |
-| ✅ **Defaults** | Format Data | Code | Smart defaults + assumption tracking |
+|  **Input** | Trip Planner Form | Form Trigger | 9-field web form (only 2 required) |
+| **Defaults** | Format Data | Code | Smart defaults + assumption tracking |
 | | Budget Calculator | Code | 40/25/20/10/5% budget split |
-| 🔍 **Research** | Search Hotels | HTTP Request | SerpAPI Google Hotels engine |
+|  **Research** | Search Hotels | HTTP Request | SerpAPI Google Hotels engine |
 | | Search Places to Visit | HTTP Request | SerpAPI Google Maps engine |
 | | Search Activities | HTTP Request | SerpAPI Google Search engine |
 | | Search Weather | HTTP Request | SerpAPI weather forecast |
 | | Search Hotel Reviews | HTTP Request | SerpAPI hotel reviews |
-| 🔄 **Analyze** | Merge All Research | Merge | Combines 5 parallel streams |
+|  **Analyze** | Merge All Research | Merge | Combines 5 parallel streams |
 | | Filter & Score Hotels | Code | Scores: `rating × log₁₀(reviews+1)` |
 | | Hotels Found in Budget? | IF | Routes to planner or error |
-| 📋 **Plan** | Planner Agent | AI Agent | GPT-4o generates full trip JSON |
+|  **Plan** | Planner Agent | AI Agent | GPT-4o generates full trip JSON |
 | | Parse Plan Output | Code | 4-step JSON extraction fallback |
-| 📧 **Email** | Email Formatter Agent | AI Agent | GPT-4o creates HTML email |
+|  **Email** | Email Formatter Agent | AI Agent | GPT-4o creates HTML email |
 | | Parse Email Output | Code | Extracts subject + body safely |
 | | Send Trip Plan Email | Gmail | Sends premium HTML itinerary |
 | | Log Completion | Code | Records execution summary |
 
 ---
 
-## 🚀 Quick Setup (5 minutes)
+##  Quick Setup (5 minutes)
 
 ### Prerequisites
 
@@ -117,7 +117,7 @@ All within your budget. All automated. Zero manual work.
 
 ### Step-by-Step
 
-#### 1️⃣ Import the Workflow
+####  Import the Workflow
 
 ```bash
 # Clone this repo
@@ -129,9 +129,9 @@ git clone https://github.com/prabh505/trip-tadka.git
 - Select `trip_planner_workflow.json`
 - The workflow will appear with all 27 nodes connected *(see [Workflow screenshot](#%EF%B8%8F-workflow-overview))*
 
-#### 2️⃣ Add Your SerpAPI Key
+####  Add Your SerpAPI Key
 
-> ⚠️ **IMPORTANT:** The workflow will NOT work without a valid SerpAPI key. Get one free at [serpapi.com](https://serpapi.com/manage-api-key) (100 searches/month on the free plan).
+>  **IMPORTANT:** The workflow will NOT work without a valid SerpAPI key. Get one free at [serpapi.com](https://serpapi.com/manage-api-key) (100 searches/month on the free plan).
 
 The workflow has a placeholder `insert_serpapi_key` in **5 HTTP Request nodes**. You must replace it with your actual SerpAPI key in each one:
 
@@ -141,9 +141,9 @@ The workflow has a placeholder `insert_serpapi_key` in **5 HTTP Request nodes**.
 4. Click on **Search Weather** node → Same step
 5. Click on **Search Hotel Reviews** node → Same step
 
-> 💡 **Tip:** Use `Ctrl+H` / `Cmd+H` in the n8n editor to find & replace `insert_serpapi_key` across all nodes at once — much faster!
+>  **Tip:** Use `Ctrl+H` / `Cmd+H` in the n8n editor to find & replace `insert_serpapi_key` across all nodes at once — much faster!
 
-#### 3️⃣ Set Up OpenAI Credentials
+####  Set Up OpenAI Credentials
 
 1. Go to **Settings** → **Credentials** → **Add Credential**
 2. Search for **OpenAI API**
@@ -151,14 +151,14 @@ The workflow has a placeholder `insert_serpapi_key` in **5 HTTP Request nodes**.
 4. Open **OpenAI Model - Planner** node → Select your credential
 5. Open **OpenAI Model - Email** node → Select the same credential
 
-#### 4️⃣ Set Up Gmail Credentials
+####  Set Up Gmail Credentials
 
 1. Go to **Settings** → **Credentials** → **Add Credential**
 2. Search for **Gmail OAuth2**
 3. Follow the OAuth flow to connect your Google account
 4. Open **Send Trip Plan Email** node → Select your Gmail credential
 
-#### 5️⃣ Activate & Test!
+####  Activate & Test!
 
 1. Toggle the workflow **Active** ✅
 2. Copy the **Form URL** from the Trip Planner Form node
@@ -168,7 +168,7 @@ The workflow has a placeholder `insert_serpapi_key` in **5 HTTP Request nodes**.
 
 ---
 
-## 📋 Form Fields
+## Form Fields
 
 | Field | Required | Default if Blank |
 |-------|----------|-----------------|
@@ -182,47 +182,47 @@ The workflow has a placeholder `insert_serpapi_key` in **5 HTTP Request nodes**.
 | Preferences | ❌ No | Sightseeing, local food |
 | Trip Type | ❌ No | Leisure |
 
-> 💡 Only **Destination** and **Email** are required! Everything else has smart defaults. All assumptions are tracked and shown in the final email.
+>  Only **Destination** and **Email** are required! Everything else has smart defaults. All assumptions are tracked and shown in the final email.
 
 ---
 
-## 🧠 Smart Features
+##  Smart Features
 
-### 🎯 Smart Defaults
+###  Smart Defaults
 Leave fields blank and the system intelligently fills them:
 - **Dates** → Next Saturday–Sunday (auto-calculated)
 - **Budget** → ₹55,000 (₹50k–60k range)
 - **Currency** → INR (always, unless changed)
 - All assumptions are listed in the email under a blue info box
 
-### 📊 Hotel Scoring Algorithm
+###  Hotel Scoring Algorithm
 Hotels are ranked using a weighted score:
 ```
 score = rating × log₁₀(reviews + 1)
 ```
 This balances **quality** (rating) with **reliability** (review count), preventing hotels with a single 5-star review from ranking above a 4.5-star hotel with 2000 reviews.
 
-### 🛡️ Bulletproof JSON Parsing
+###  Bulletproof JSON Parsing
 AI agents sometimes return malformed JSON. Our Code-based parsers use a **4-step fallback**:
 1. Direct `JSON.parse()`
 2. Strip markdown ` ```json ``` ` fences → parse
 3. Regex extract outermost `{ }` → parse
 4. Fallback with safe defaults
 
-### 🔄 Error Resilience
+###  Error Resilience
 All 5 HTTP research nodes use `continueOnError` — if one API call fails, the rest continue normally.
 
 ---
 
-## 📧 Email Preview
+##  Email Preview
 
 The email includes:
-- 🏨 **Hotel recommendations** with ratings, prices & amenities
-- 📋 **Day-by-day itinerary** (morning/afternoon/evening)
-- 💰 **Budget breakdown** table
-- 🌤️ **Weather info** & packing tips
-- 💡 **Local travel tips**
-- 📌 **Assumptions box** (if smart defaults were used)
+-  **Hotel recommendations** with ratings, prices & amenities
+-  **Day-by-day itinerary** (morning/afternoon/evening)
+-  **Budget breakdown** table
+-  **Weather info** & packing tips
+-  **Local travel tips**
+-  **Assumptions box** (if smart defaults were used)
 
 Designed with a modern color scheme:
 - Header gradient: `#2563EB → #7C3AED`
@@ -231,7 +231,7 @@ Designed with a modern color scheme:
 
 ---
 
-## 💰 API Costs
+##  API Costs
 
 | Service | Cost per Trip | Notes |
 |---------|--------------|-------|
@@ -242,7 +242,7 @@ Designed with a modern color scheme:
 
 ---
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
@@ -254,24 +254,24 @@ Designed with a modern color scheme:
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
-📦 trip-tadka/
-├── 📄 trip_planner_workflow.json   # n8n workflow (import this)
-├── 📄 README.md                    # You're reading this
-├── 📁 assets/                      # Screenshots & previews
-│   ├── 🖼️ Workflow.png             # Full workflow view
-│   ├── 🖼️ Form.png                 # Form trigger interface
-│   ├── 🖼️ Execution.png            # Execution log
-│   ├── 🖼️ Mail1.png                # Email output (part 1)
-│   └── 🖼️ Mail2.png                # Email output (part 2)
-└── 📄 LICENSE                      # MIT License
+ trip-tadka/
+├──  trip_planner_workflow.json   # n8n workflow (import this)
+├──  README.md                    # You're reading this
+├──  assets/                      # Screenshots & previews
+│   ├──  Workflow.png             # Full workflow view
+│   ├──  Form.png                 # Form trigger interface
+│   ├──  Execution.png            # Execution log
+│   ├──  Mail1.png                # Email output (part 1)
+│   └──  Mail2.png                # Email output (part 2)
+└──  LICENSE                      # MIT License
 ```
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Import `trip_planner_workflow.json` into your n8n instance
@@ -281,13 +281,13 @@ Designed with a modern color scheme:
 
 ---
 
-## 📜 License
+##  License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Credits
+##  Credits
 
 - **[n8n](https://n8n.io)** — Workflow automation platform
 - **[OpenAI GPT-4o](https://openai.com)** — AI planning & email formatting
@@ -298,8 +298,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 <div align="center">
 
-**Made with ❤️ by [Prabhpreet Singh](https://github.com/prabh505)**
-
-⭐ Star this repo if Trip Tadka helped plan your next adventure!
+**Made by [Prabhpreet Singh](https://github.com/prabh505)**
+Star this repo if Trip Tadka helped plan your next adventure!
 
 </div>
