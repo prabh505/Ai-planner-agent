@@ -1,0 +1,844 @@
+{
+  "name": "AI Trip Planner",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Trip Planner",
+        "formDescription": "Fill in your travel details and we'll plan the perfect trip!\nLeave fields blank for smart defaults (next Sat-Sun, ₹55k budget, 2 travelers).",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Destination",
+              "fieldType": "string",
+              "placeholder": "e.g. Goa, Manali, Paris",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Check In Date",
+              "fieldType": "date"
+            },
+            {
+              "fieldLabel": "Check Out Date",
+              "fieldType": "date"
+            },
+            {
+              "fieldLabel": "Total Budget",
+              "fieldType": "number",
+              "placeholder": "e.g. 55000 (defaults to 55000)"
+            },
+            {
+              "fieldLabel": "Currency",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "INR"
+                  },
+                  {
+                    "option": "USD"
+                  },
+                  {
+                    "option": "EUR"
+                  },
+                  {
+                    "option": "GBP"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Number of Travelers",
+              "fieldType": "number",
+              "placeholder": "e.g. 2 (defaults to 2)"
+            },
+            {
+              "fieldLabel": "Your Email",
+              "fieldType": "string",
+              "placeholder": "you@gmail.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Preferences",
+              "fieldType": "string",
+              "placeholder": "e.g. beach, adventure, family, luxury"
+            },
+            {
+              "fieldLabel": "Trip Type",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Leisure"
+                  },
+                  {
+                    "option": "Adventure"
+                  },
+                  {
+                    "option": "Honeymoon"
+                  },
+                  {
+                    "option": "Family"
+                  },
+                  {
+                    "option": "Business"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2341b138-a3f9-4c46-990d-f41d9181c42f",
+      "name": "Trip Planner Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        12032,
+        4544
+      ],
+      "webhookId": "a2f91992-3833-4cf5-911f-ac4d021bb94d"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nfunction findVal(obj, ...keys) {\n  for (const key of keys) {\n    if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];\n  }\n  const objKeys = Object.keys(obj);\n  for (const key of keys) {\n    const lower = key.toLowerCase();\n    const found = objKeys.find(k => k.toLowerCase().replace(/[\\s_-]/g, '') === lower.replace(/[\\s_-]/g, ''));\n    if (found && obj[found] !== undefined && obj[found] !== null && obj[found] !== '') return obj[found];\n  }\n  return null;\n}\nconst d = raw.body || raw;\nconst assumptions = [];\n\nconst destination = findVal(d, 'destination', 'Destination', 'dest', 'city', 'place') || 'Goa, India';\nif (!findVal(d, 'destination', 'Destination', 'dest', 'city', 'place')) assumptions.push('📍 Destination assumed: Goa, India');\n\nconst today = new Date();\nconst dayOfWeek = today.getDay();\nconst daysUntilSat = (6 - dayOfWeek + 7) % 7 || 7;\nconst nextSat = new Date(today); nextSat.setDate(today.getDate() + daysUntilSat);\nconst nextSun = new Date(nextSat); nextSun.setDate(nextSat.getDate() + 1);\nconst fmt = (dt) => dt.toISOString().split('T')[0];\n\nlet checkIn = findVal(d, 'check_in_date', 'checkInDate', 'checkin', 'start_date', 'Check In Date');\nlet checkOut = findVal(d, 'check_out_date', 'checkOutDate', 'checkout', 'end_date', 'Check Out Date');\nif (!checkIn) { checkIn = fmt(nextSat); assumptions.push('📅 Check-in assumed: ' + checkIn + ' (next Saturday)'); }\nif (!checkOut) { checkOut = fmt(nextSun); assumptions.push('📅 Check-out assumed: ' + checkOut + ' (next Sunday)'); }\n\nconst ensureDate = (s) => { if (/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s; try { const p = new Date(s); if (!isNaN(p)) return fmt(p); } catch(e){} return s; };\ncheckIn = ensureDate(checkIn); checkOut = ensureDate(checkOut);\n\nlet numNights = 2;\ntry { const ci=new Date(checkIn), co=new Date(checkOut); if(!isNaN(ci)&&!isNaN(co)) numNights=Math.max(1,Math.round((co-ci)/86400000)); } catch(e){}\n\nlet totalBudget = Number(findVal(d, 'total_budget', 'totalBudget', 'budget', 'Total Budget') || 0);\nif (!totalBudget || totalBudget <= 0) { totalBudget = 55000; assumptions.push('💰 Budget assumed: ₹55,000 (range ₹50k-60k)'); }\n\nlet currency = findVal(d, 'currency', 'Currency') || 'INR';\nif (!findVal(d, 'currency', 'Currency')) assumptions.push('💵 Currency: INR (default)');\n\nlet numTravelers = Number(findVal(d, 'num_travelers', 'numTravelers', 'travelers', 'guests', 'Number of Travelers') || 0);\nif (!numTravelers || numTravelers <= 0) { numTravelers = 2; assumptions.push('👥 Travelers assumed: 2'); }\n\nconst email = findVal(d, 'email', 'Your Email', 'mail', 'emailAddress') || '';\n\nconst prefsRaw = findVal(d, 'preferences', 'Preferences', 'prefs', 'interests') || '';\nconst preferences = String(prefsRaw).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);\nif (preferences.length === 0) { preferences.push('sightseeing','local food'); assumptions.push('🎯 Preferences assumed: sightseeing, local food'); }\n\nlet tripType = (findVal(d, 'trip_type', 'tripType', 'Trip Type', 'type') || 'leisure').toString().toLowerCase();\nif (!findVal(d, 'trip_type', 'tripType', 'Trip Type', 'type')) assumptions.push('🏖️ Trip type assumed: Leisure');\n\nreturn [{ json: { destination, check_in_date: checkIn, check_out_date: checkOut, num_nights: numNights, total_budget: totalBudget, currency, num_travelers: numTravelers, email, preferences, trip_type: tripType, assumptions } }];"
+      },
+      "id": "16116b63-ff90-48c5-9d8a-56f4fe304ea4",
+      "name": "Format Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12256,
+        4544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst totalBudget = Number(d.total_budget) || 55000;\nconst numNights = Number(d.num_nights) || 2;\nconst numTravelers = Number(d.num_travelers) || 2;\nconst hotelBudget = Math.round(totalBudget * 0.40);\nconst activityBudget = Math.round(totalBudget * 0.25);\nconst foodBudget = Math.round(totalBudget * 0.20);\nconst transportBudget = Math.round(totalBudget * 0.10);\nconst miscBudget = Math.round(totalBudget * 0.05);\nconst hotelPerNight = Math.round(hotelBudget / numNights);\nconst maxPricePerNight = Math.round(hotelPerNight / Math.ceil(numTravelers / 2));\nreturn [{ json: { ...d, budget_breakdown: { hotel_total: hotelBudget, hotel_per_night: hotelPerNight, max_price_per_night: maxPricePerNight, activity_total: activityBudget, activity_per_day: Math.round(activityBudget / numNights), food_total: foodBudget, food_per_day: Math.round(foodBudget / numNights), transport_total: transportBudget, misc_total: miscBudget } } }];"
+      },
+      "id": "b4450da7-c6b8-477e-b942-e5995437381a",
+      "name": "Budget Calculator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12480,
+        4544
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google_hotels"
+            },
+            {
+              "name": "q",
+              "value": "={{ 'hotels in ' + $json.destination }}"
+            },
+            {
+              "name": "check_in_date",
+              "value": "={{ $json.check_in_date }}"
+            },
+            {
+              "name": "check_out_date",
+              "value": "={{ $json.check_out_date }}"
+            },
+            {
+              "name": "adults",
+              "value": "={{ $json.num_travelers }}"
+            },
+            {
+              "name": "max_price",
+              "value": "={{ $json.budget_breakdown.max_price_per_night }}"
+            },
+            {
+              "name": "sort_by",
+              "value": "8"
+            },
+            {
+              "name": "currency",
+              "value": "={{ $json.currency }}"
+            },
+            {
+              "name": "gl",
+              "value": "in"
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            },
+            {
+              "name": "api_key",
+              "value": "insert_serpapi_key"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f7e73af4-684a-4b9c-9289-9849f1cb1d91",
+      "name": "Search Hotels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12704,
+        4160
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google_maps"
+            },
+            {
+              "name": "q",
+              "value": "={{ 'top tourist attractions in ' + $json.destination }}"
+            },
+            {
+              "name": "type",
+              "value": "search"
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            },
+            {
+              "name": "api_key",
+              "value": "insert_serpapi_key"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "906293f5-bc7a-4a45-9412-0a76ac1ac1cf",
+      "name": "Search Places to Visit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12704,
+        4352
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google"
+            },
+            {
+              "name": "q",
+              "value": "={{ 'best things to do in ' + $json.destination + ' activities experiences tours' }}"
+            },
+            {
+              "name": "gl",
+              "value": "in"
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            },
+            {
+              "name": "num",
+              "value": "15"
+            },
+            {
+              "name": "api_key",
+              "value": "insert_serpapi_key"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2c5da214-a92d-4955-8d12-a9c7305b1595",
+      "name": "Search Activities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12704,
+        4544
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google"
+            },
+            {
+              "name": "q",
+              "value": "={{ 'weather forecast ' + $json.destination + ' ' + $json.check_in_date }}"
+            },
+            {
+              "name": "gl",
+              "value": "in"
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            },
+            {
+              "name": "api_key",
+              "value": "insert_serpapi_key"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a418f8fe-2996-4f05-a831-d06e325f6a3a",
+      "name": "Search Weather",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12704,
+        4736
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google"
+            },
+            {
+              "name": "q",
+              "value": "={{ 'best rated hotels ' + $json.destination + ' reviews ratings ' + $json.currency + ' budget' }}"
+            },
+            {
+              "name": "gl",
+              "value": "in"
+            },
+            {
+              "name": "hl",
+              "value": "en"
+            },
+            {
+              "name": "num",
+              "value": "10"
+            },
+            {
+              "name": "api_key",
+              "value": "insert_serpapi_key"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "70305e77-3cb3-4e7f-a560-f27d4ffb3c98",
+      "name": "Search Hotel Reviews",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12704,
+        4928
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "id": "41d52071-9cd3-4446-bbe7-4f09b601c466",
+      "name": "Merge All Research",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        12928,
+        4496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet hotels=[], places=[], activities=[], weather={}, reviewSnippets=[];\nfor (const item of items) {\n  const d = item.json;\n  if (d.properties && Array.isArray(d.properties)) hotels = d.properties;\n  if (d.local_results && Array.isArray(d.local_results)) places = d.local_results;\n  if (d.answer_box && (d.answer_box.type==='weather_result'||d.answer_box.temperature)) weather = d.answer_box;\n  if (d.organic_results && Array.isArray(d.organic_results)) {\n    const q = (d.search_parameters&&d.search_parameters.q)||'';\n    if (q.includes('things to do')||q.includes('activities')) activities = d.organic_results;\n    else if (q.includes('reviews')||q.includes('rated')) reviewSnippets = d.organic_results;\n  }\n  if (d.top_sights&&d.top_sights.sights) places = places.length>0 ? places : d.top_sights.sights;\n}\nconst scoredHotels = hotels.filter(h=>h.rate_per_night||h.extracted_price).map(h=>({\n  name:h.name||'Unknown', price_per_night:(h.rate_per_night&&h.rate_per_night.extracted_lowest)||h.extracted_price||0,\n  total_price:(h.total_rate&&h.total_rate.extracted_lowest)||0, rating:h.overall_rating||0,\n  reviews_count:h.reviews||0, score:(h.overall_rating||0)*Math.log10((h.reviews||1)+1),\n  amenities:(h.amenities||[]).slice(0,6), link:h.link||''\n})).sort((a,b)=>b.score-a.score).slice(0,5);\nreturn [{json:{\n  hotels:scoredHotels,\n  places:(places||[]).slice(0,10).map(p=>({name:p.title||p.name||'',rating:p.rating||0,address:p.address||'',description:p.description||p.snippet||''})),\n  activities:(activities||[]).slice(0,8).map(a=>({title:a.title||'',snippet:a.snippet||'',link:a.link||''})),\n  weather, review_snippets:(reviewSnippets||[]).slice(0,5).map(r=>r.snippet||''),\n  has_hotels_in_budget:scoredHotels.length>0, hotel_count:scoredHotels.length\n}}];"
+      },
+      "id": "11f657bc-93bb-4af8-9187-ec36ed6df6ea",
+      "name": "Filter & Score Hotels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13152,
+        4544
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-001",
+              "leftValue": "={{ $json.has_hotels_in_budget }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e40d9ee3-6e75-4f7d-94f3-5845a5138535",
+      "name": "Hotels Found in Budget?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        13376,
+        4544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const f=$('Format Data').first().json;\nreturn [{json:{status:'NO_HOTELS_FOUND',destination:f.destination,budget:f.total_budget+' '+f.currency,message:'No hotels found within budget.'}}];"
+      },
+      "id": "94a7354e-93b7-47db-9393-0ead22e9c2f7",
+      "name": "No Hotels Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13600,
+        4640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const budgetData=$('Budget Calculator').first().json;\nconst research=$input.first().json;\nreturn [{json:{plannerInput:JSON.stringify({user_request:{destination:budgetData.destination,check_in_date:budgetData.check_in_date,check_out_date:budgetData.check_out_date,num_nights:budgetData.num_nights,total_budget:budgetData.total_budget,currency:budgetData.currency,num_travelers:budgetData.num_travelers,preferences:budgetData.preferences||[],trip_type:budgetData.trip_type||'leisure'},budget_breakdown:budgetData.budget_breakdown,assumptions_made:budgetData.assumptions||[],research:{hotels:research.hotels,places:research.places,activities:research.activities,weather:research.weather,review_snippets:research.review_snippets}},null,2)}}];"
+      },
+      "id": "f3aa3b11-c599-4f41-be97-bc4efd6356b6",
+      "name": "Prepare Planner Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13600,
+        4448
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.plannerInput }}",
+        "options": {
+          "systemMessage": "You are a world-class travel planner AI.\n\nCRITICAL: Your ENTIRE response must be ONLY a valid JSON object. No markdown, no code fences, no text before or after. Start with { and end with }.\n\nIf assumptions_made has items, include an assumptions array.\n\nRequired JSON:\n{\n  \"assumptions\": [],\n  \"recommended_hotel\": { \"name\": \"str\", \"price_per_night\": 0, \"total_price\": 0, \"rating\": 0, \"amenities\": [], \"why\": \"str\", \"review_highlight\": \"str\" },\n  \"alternative_hotels\": [{ \"name\": \"str\", \"price_per_night\": 0, \"total_price\": 0, \"rating\": 0, \"tag\": \"Best Rated\" }],\n  \"itinerary\": [{ \"day\": 1, \"date\": \"YYYY-MM-DD\", \"title\": \"str\", \"morning\": \"str\", \"afternoon\": \"str\", \"evening\": \"str\", \"estimated_cost\": 0 }],\n  \"budget_summary\": { \"hotel_cost\": 0, \"activities_cost\": 0, \"food_cost\": 0, \"transport_cost\": 0, \"misc_cost\": 0, \"total_cost\": 0, \"remaining\": 0, \"within_budget\": true },\n  \"weather_info\": { \"summary\": \"str\", \"conditions\": \"str\" },\n  \"packing_tips\": [\"str\"],\n  \"travel_tips\": [\"str\"]\n}\n\nRules: All amounts in user's currency (default INR). total_cost MUST be within total_budget. Use real place names from research.",
+          "maxIterations": 5
+        }
+      },
+      "id": "0d05f2a9-fdb7-413c-9acb-7b021f261ea1",
+      "name": "Planner Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        13824,
+        4448
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "8404c0c4-92ef-43de-b9c5-1989c60cc606",
+      "name": "OpenAI Model - Planner",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        13896,
+        4672
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "0GlcknhFzvkuRun4",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data=$input.first().json; let plan;\ntry { const raw=typeof data.output==='string'?data.output:JSON.stringify(data.output);\n  try{plan=JSON.parse(raw)}catch(e1){let c=raw.replace(/```json\\s*/gi,'').replace(/```\\s*/g,'').trim();\n  try{plan=JSON.parse(c)}catch(e2){const m=c.match(/\\{[\\s\\S]*\\}/);if(m){plan=JSON.parse(m[0])}else{plan={raw_text:raw,parse_error:true,assumptions:[],recommended_hotel:{name:'Parse failed'},itinerary:[],budget_summary:{},packing_tips:[],travel_tips:[]}}}} }\ncatch(e){plan={raw_text:String(data.output||''),parse_error:true}}\nreturn [{json:{plan}}];"
+      },
+      "id": "6360c550-8e07-4b67-b6f1-a267425aa312",
+      "name": "Parse Plan Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14176,
+        4448
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Convert this travel plan to a beautiful HTML email.\n\nPlan: {{ JSON.stringify($json.plan) }}\nDestination: {{ $('Format Data').first().json.destination }}\nEmail: {{ $('Format Data').first().json.email }}",
+        "options": {
+          "systemMessage": "You are a professional email designer.\n\nCRITICAL: Return ONLY a JSON object. No markdown, no code fences. Start with { end with }.\n\nRequired JSON:\n{ \"subject\": \"Your Trip to [Dest] | [Dates]\", \"html_body\": \"<html>...</html>\", \"plain_text\": \"plain text\" }\n\nDesign: max-width 600px, inline CSS only.\nHeader: gradient #2563EB→#7C3AED, white text\nIf assumptions exist: light blue info box\nHotels: cards with green border on recommended\nItinerary: alternating rows\nBudget table: green remaining if positive\nFooter: 'Made with love by AI Trip Planner | Powered by n8n' in #94A3B8",
+          "maxIterations": 5
+        }
+      },
+      "id": "3d6aaf1b-c16a-44d3-b014-45ae9c84dd7e",
+      "name": "Email Formatter Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        14400,
+        4448
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "06e0829a-4da8-4831-b49e-92cdc7a8ee74",
+      "name": "OpenAI Model - Email",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        14472,
+        4672
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "0GlcknhFzvkuRun4",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data=$input.first().json; let email;\ntry { const raw=typeof data.output==='string'?data.output:JSON.stringify(data.output);\n  try{email=JSON.parse(raw)}catch(e1){let c=raw.replace(/```json\\s*/gi,'').replace(/```\\s*/g,'').trim();\n  try{email=JSON.parse(c)}catch(e2){const m=c.match(/\\{[\\s\\S]*\\}/);if(m){email=JSON.parse(m[0])}else{\n  const dest=$('Format Data').first().json.destination||'destination';\n  email={subject:'Your Trip to '+dest,html_body:'<html><body style=\"font-family:Arial;max-width:600px;margin:auto;padding:20px\"><h1 style=\"color:#2563EB\">Your Trip Plan</h1><pre>'+raw+'</pre></body></html>',plain_text:raw}}}} }\ncatch(e){email={subject:'Your AI Trip Plan',html_body:'<p>Error formatting</p>',plain_text:''}}\nemail.subject=email.subject||'Your AI Trip Plan'; email.html_body=email.html_body||'<p>Plan</p>'; email.plain_text=email.plain_text||'';\nreturn [{json:email}];"
+      },
+      "id": "a5c86ee2-9abd-4a3d-8172-2493abcaa71c",
+      "name": "Parse Email Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14752,
+        4448
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Format Data').first().json.email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html_body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "c61ef46c-424a-4eac-9293-3b4e7f8ae486",
+      "name": "Send Trip Plan Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        14976,
+        4448
+      ],
+      "webhookId": "f58422a2-e838-4c8c-84ec-56ff23d7f4b4",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Vn2mzbZYR43FQIL4",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let email='',dest='',budget='',currency='',hotel='';\ntry{const f=$('Format Data').first().json;email=f.email;dest=f.destination;budget=f.total_budget;currency=f.currency}catch(e){}\ntry{const p=$('Parse Plan Output').first().json;hotel=(p.plan&&p.plan.recommended_hotel&&p.plan.recommended_hotel.name)||''}catch(e){}\nreturn [{json:{status:'SUCCESS',destination:dest,email_sent_to:email,top_hotel:hotel,budget:budget+' '+currency,completed_at:new Date().toISOString()}}];"
+      },
+      "id": "2644ea10-89f7-47be-aceb-74130e676927",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        15200,
+        4448
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trip Planner Form": {
+      "main": [
+        [
+          {
+            "node": "Format Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Data": {
+      "main": [
+        [
+          {
+            "node": "Budget Calculator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Budget Calculator": {
+      "main": [
+        [
+          {
+            "node": "Search Hotels",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search Places to Visit",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search Activities",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search Weather",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search Hotel Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Hotels": {
+      "main": [
+        [
+          {
+            "node": "Merge All Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Places to Visit": {
+      "main": [
+        [
+          {
+            "node": "Merge All Research",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Search Activities": {
+      "main": [
+        [
+          {
+            "node": "Merge All Research",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Search Weather": {
+      "main": [
+        [
+          {
+            "node": "Merge All Research",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Search Hotel Reviews": {
+      "main": [
+        [
+          {
+            "node": "Merge All Research",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Merge All Research": {
+      "main": [
+        [
+          {
+            "node": "Filter & Score Hotels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter & Score Hotels": {
+      "main": [
+        [
+          {
+            "node": "Hotels Found in Budget?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hotels Found in Budget?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Planner Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Hotels Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Planner Input": {
+      "main": [
+        [
+          {
+            "node": "Planner Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model - Planner": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Planner Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planner Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Plan Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Plan Output": {
+      "main": [
+        [
+          {
+            "node": "Email Formatter Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model - Email": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Email Formatter Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Formatter Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Email Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Email Output": {
+      "main": [
+        [
+          {
+            "node": "Send Trip Plan Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Trip Plan Email": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Completion": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "82963add-a066-4fab-8ac4-0fa3057345e8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c58475a16239c69aa31b5de028696d4e8370c7e49c6d7fa749bca406d7ec478d"
+  },
+  "id": "CBsw7Gm9Hrhv7wJf",
+  "tags": []
+}
