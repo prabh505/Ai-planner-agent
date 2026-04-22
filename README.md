@@ -299,6 +299,6 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 <div align="center">
 
 **Made by [Prabhpreet Singh](https://github.com/prabh505)**
-Star this repo if Trip Tadka helped plan your next adventure!
+
 
 </div>
