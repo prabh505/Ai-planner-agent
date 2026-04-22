@@ -61,7 +61,7 @@ All within your budget. All automated. Zero manual work.
                                        ▼
                                 Hotels in Budget?
                               ╱                ╲
-                           ✅ Yes            ❌ No
+                            Yes                No
                              │                 │
                              ▼                 ▼
                         AI Planner        Error Log
@@ -160,7 +160,7 @@ The workflow has a placeholder `insert_serpapi_key` in **5 HTTP Request nodes**.
 
 ####  Activate & Test!
 
-1. Toggle the workflow **Active** ✅
+1. Toggle the workflow **Active** 
 2. Copy the **Form URL** from the Trip Planner Form node
 3. Open it in your browser
 4. Fill in **Destination** and **Email** (minimum required)
@@ -172,15 +172,15 @@ The workflow has a placeholder `insert_serpapi_key` in **5 HTTP Request nodes**.
 
 | Field | Required | Default if Blank |
 |-------|----------|-----------------|
-| **Destination** | ✅ Yes | — |
-| Check-in Date | ❌ No | Next Saturday |
-| Check-out Date | ❌ No | Next Sunday |
-| Total Budget | ❌ No | ₹55,000 |
-| Currency | ❌ No | INR |
-| Number of Travelers | ❌ No | 2 |
-| **Your Email** | ✅ Yes | — |
-| Preferences | ❌ No | Sightseeing, local food |
-| Trip Type | ❌ No | Leisure |
+| **Destination** |  Yes | — |
+| Check-in Date |  No | Next Saturday |
+| Check-out Date |  No | Next Sunday |
+| Total Budget |  No | ₹55,000 |
+| Currency |  No | INR |
+| Number of Travelers |  No | 2 |
+| **Your Email** |  Yes | — |
+| Preferences |  No | Sightseeing, local food |
+| Trip Type |  No | Leisure |
 
 >  Only **Destination** and **Email** are required! Everything else has smart defaults. All assumptions are tracked and shown in the final email.
 
